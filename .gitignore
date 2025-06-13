@@ -1,5 +1,2 @@
 .env.local
 .env
-/src/generated/prisma
-
-/generated/prisma

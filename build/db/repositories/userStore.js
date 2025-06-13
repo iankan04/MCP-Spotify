@@ -17,7 +17,6 @@ export async function getUser(client_id) {
     const data = await redis.get(`${prefix}${client_id}`);
     if (!data)
         return null;
-    console.log(data);
     const parsed = UserSchema.safeParse(JSON.parse(data));
     if (!parsed.success)
         throw new Error('Corrupted user data');

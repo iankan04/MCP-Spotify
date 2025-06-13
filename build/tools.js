@@ -35,7 +35,6 @@ const searchSpotify = {
                 }).join('\n');
             }
             else if (type === 'playlist' && results.playlists !== null) {
-                // console.log(results.playlists);
                 formattedResults = results.playlists.items.map((playlist, i) => {
                     return `${i + 1}. "${playlist?.name ?? 'Unknown Playlist'} owned by ${playlist?.owner.display_name ?? 'Unknown Owner'} with ${playlist?.followers ?? 'Unknown followers'} followers`;
                 }).join('\n');
@@ -61,7 +60,7 @@ const searchSpotify = {
                     return `${i + 1}. "${audiobook.name} (${audiobook.edition} edition) by ${audiobook.publisher} and narrated by ${audiobook.narrators}. ${audiobook.description} The audiobook has ${audiobook.total_chapters} chapters. `;
                 }).join('\n');
             }
-            console.error(formattedResults);
+            // console.error(formattedResults);
             return {
                 content: [
                     {
@@ -72,6 +71,7 @@ const searchSpotify = {
             };
         }
         catch (error) {
+            console.error("Error in searchSpotify handler:", error);
             return {
                 content: [
                     {

@@ -66,9 +66,8 @@ app.get('/callback', async function (req, res) {
             await setUser(client_id, (await tokens).access_token, (await tokens).expires_in, (await tokens).refresh_token);
         }
         else {
-            console.log("User already exists in the database");
+            console.error("User already exists in the database");
         }
-        console.log(await getUser(client_id));
         res.end('<html><body><h1>Authentication Successful</h1><p>You can now close this window</p></body></html>');
         console.log('Authentication successful');
         server.close();
@@ -79,7 +78,7 @@ app.get('/callback', async function (req, res) {
     }
 });
 const server = app.listen(PORT, () => {
-    //   console.log(`Express server running at http://localhost:${PORT}/`);
+    console.error(`Express server running at http://localhost:${PORT}/`);
 });
 export async function refreshSpotifyToken(refresh_token) {
     const tokenUrl = 'https://accounts.spotify.com/api/token';
@@ -100,22 +99,40 @@ export async function refreshSpotifyToken(refresh_token) {
 }
 export async function handleSpotifyRequest(action) {
     let user = await getUser(client_id);
-    if (user === null)
+    if (user === null) {
         throw new Error("User does not exist in database");
+    }
     const current = new Date();
     if (current >= user.expires_at) {
-        console.log("refreshing");
-        const refreshed = await refreshSpotifyToken(user.refresh_token);
-        await updateUser(client_id, refreshed.access_token, refreshed.expires_in);
-        user = await getUser(client_id);
-        if (user === null)
-            throw new Error("User does not exist in database");
+        console.error("refreshing");
+        try {
+            const refreshed = await refreshSpotifyToken(user.refresh_token);
+            await updateUser(client_id, refreshed.access_token, refreshed.expires_in);
+            user = await getUser(client_id);
+            if (user === null) {
+                throw new Error("User does not exist in database");
+            }
+        }
+        catch (error) {
+            console.error("Error refreshing token:", error);
+            throw new Error("Failed to refresh token");
+        }
     }
     try {
-        const spotifyApi = SpotifyApi.withAccessToken(user.client_id, { access_token: user.access_token, token_type: 'Bearer', expires_in: 3600, refresh_token: user.refresh_token });
-        return await action(spotifyApi);
+        const spotifyApi = SpotifyApi.withAccessToken(user.client_id, {
+            access_token: user.access_token,
+            token_type: 'Bearer',
+            expires_in: 3600,
+            refresh_token: user.refresh_token
+        });
+        const result = await action(spotifyApi);
+        if (!result) {
+            throw new Error("No results returned from Spotify API");
+        }
+        return result;
     }
     catch (error) {
-        throw error;
+        console.error("Error in handleSpotifyRequest:", error);
+        throw new Error(`Spotify API error: ${error instanceof Error ? error.message : String(error)}`);
     }
 }

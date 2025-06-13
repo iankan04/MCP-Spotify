@@ -10,7 +10,9 @@ export type SpotifyHandlerExtra = RequestHandlerExtra<
   ServerNotification
 >;
 
-export type tool<Args extends z.ZodRawShape> = {
+export type tool<
+  Args extends z.ZodRawShape,
+> = {
   name: string;
   description: string;
   schema: Args;

@@ -35,7 +35,7 @@ const searchSpotify: tool<{
                     undefined,
                     lim as MaxInt<50>
                 )
-            })
+            });
 
             let formattedResults = ""
 
@@ -49,7 +49,6 @@ const searchSpotify: tool<{
                     return `${i + 1}. "${artist.name} with ${artist.followers} followers and popularity score ${artist.popularity}`;
                 }).join('\n');
             } else if (type === 'playlist' && results.playlists !== null) {
-                // console.log(results.playlists);
                 formattedResults = results.playlists.items.map((playlist, i) => {
                     return `${i + 1}. "${playlist?.name ?? 'Unknown Playlist'} owned by ${playlist?.owner.display_name ?? 'Unknown Owner'} with ${playlist?.followers ?? 'Unknown followers'} followers`;
                 }).join('\n');
@@ -72,7 +71,7 @@ const searchSpotify: tool<{
                 }).join('\n');
             }
             
-            console.error(formattedResults);
+            // console.error(formattedResults);
             return {
                 content: [
                     {
@@ -82,6 +81,7 @@ const searchSpotify: tool<{
                 ]
             }
         } catch (error) {
+            console.error("Error in searchSpotify handler:", error);
             return {
                 content: [
                     {
@@ -94,9 +94,6 @@ const searchSpotify: tool<{
             }
         }
     }
-
-
-    
 }
 
 export const tools = [
