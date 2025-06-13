@@ -3,45 +3,14 @@ import crypto from 'crypto';
 import * as qs from 'querystring';
 import axios from 'axios';
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
-import { PrismaClient } from '../generated/prisma/index.js';
 import { config } from "./config.js";
 import { URLSearchParams } from 'node:url';
-const prisma = new PrismaClient();
+import { setUser, getUser, updateUser } from './db/repositories/userStore.js';
 const app = express();
 const PORT = 8000;
 const { client_id, client_secret, redirect_uri } = config;
 function generateRandomString(length) {
     return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
-}
-export async function getUser(id) {
-    const match = await prisma.user.findFirst({
-        where: {
-            client_id: id,
-        },
-    });
-    if (!match)
-        throw new Error("Could not get user ");
-    return match;
-}
-async function updateDatabase(id, access_token, expires_in, refresh_token) {
-    if ((await getUser(id)) === null) {
-        const current = new Date();
-        const expires_at = new Date(current.getTime() + expires_in * 1000);
-        await prisma.user.create({
-            data: {
-                client_id: id,
-                access_token: access_token,
-                refresh_token: refresh_token,
-                expires_at: expires_at,
-                created_at: current,
-                updated_at: current,
-            }
-        });
-        console.log("Added new user + access_token to database");
-    }
-    else {
-        console.log("User already exists in database");
-    }
 }
 async function exchangeCodeForToken(code) {
     const tokenUrl = 'https://accounts.spotify.com/api/token';
@@ -93,8 +62,13 @@ app.get('/callback', async function (req, res) {
     }
     try {
         const tokens = exchangeCodeForToken(code);
-        await updateDatabase(client_id, (await tokens).access_token, (await tokens).expires_in, (await tokens).refresh_token);
-        console.log((await prisma.user.findMany()));
+        if (await getUser(client_id) === null) {
+            await setUser(client_id, (await tokens).access_token, (await tokens).expires_in, (await tokens).refresh_token);
+        }
+        else {
+            console.log("User already exists in the database");
+        }
+        console.log(await getUser(client_id));
         res.end('<html><body><h1>Authentication Successful</h1><p>You can now close this window</p></body></html>');
         console.log('Authentication successful');
         server.close();
@@ -126,20 +100,16 @@ export async function refreshSpotifyToken(refresh_token) {
 }
 export async function handleSpotifyRequest(action) {
     let user = await getUser(client_id);
+    if (user === null)
+        throw new Error("User does not exist in database");
     const current = new Date();
     if (current >= user.expires_at) {
         console.log("refreshing");
         const refreshed = await refreshSpotifyToken(user.refresh_token);
-        const newExpiresAt = new Date(current.getTime() + refreshed.expires_in * 1000);
-        await prisma.user.update({
-            where: { client_id: client_id },
-            data: {
-                access_token: refreshed.access_token,
-                expires_at: newExpiresAt,
-                updated_at: current
-            }
-        });
+        await updateUser(client_id, refreshed.access_token, refreshed.expires_in);
         user = await getUser(client_id);
+        if (user === null)
+            throw new Error("User does not exist in database");
     }
     try {
         const spotifyApi = SpotifyApi.withAccessToken(user.client_id, { access_token: user.access_token, token_type: 'Bearer', expires_in: 3600, refresh_token: user.refresh_token });

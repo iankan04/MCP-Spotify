@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import path from 'path';
+dotenv.config();
+dotenv.config({ path: '/Users/iank8/Desktop/Coding Projects/MCP-Spotify/.env.local' });
 
 function getEnv(name: string): string {
     const val = process.env[name];
