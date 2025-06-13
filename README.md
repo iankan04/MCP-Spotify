@@ -105,6 +105,13 @@ npm run auth
 
 6. These tokens will be saved to the Redis database and automatically refreshed when called
 
+### Starting the application
+
+Run redis-server and the index.js server to start application
+```bash
+node build/index.js
+```
+
 ## Integrating with Claude Desktop
 
 To use your MCP server with Claude Desktop, add it to your Claude configuration:
