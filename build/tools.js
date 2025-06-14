@@ -16,11 +16,10 @@ const searchSpotify = {
             .describe("The maximum number of results to return in each item type")
     },
     handler: async (args, extra) => {
-        const { query, type, limit } = args;
-        const lim = limit ?? 20;
+        const { query, type, limit = 20 } = args;
         try {
             const results = await handleSpotifyRequest(async (spotifyApi) => {
-                return await spotifyApi.search(query, [type], undefined, lim);
+                return await spotifyApi.search(query, [type], undefined, limit);
             });
             let formattedResults = "";
             if (type === 'album' && results.albums) {
@@ -60,7 +59,6 @@ const searchSpotify = {
                     return `${i + 1}. "${audiobook.name} (${audiobook.edition} edition) by ${audiobook.publisher} and narrated by ${audiobook.narrators}. ${audiobook.description} The audiobook has ${audiobook.total_chapters} chapters. `;
                 }).join('\n');
             }
-            // console.error(formattedResults);
             return {
                 content: [
                     {
@@ -83,6 +81,67 @@ const searchSpotify = {
         }
     }
 };
+const getTopItems = {
+    name: "getTopItems",
+    description: "Get the current user's top artists or tracks based on calculated affinity",
+    schema: {
+        type: z
+            .enum(['artists', 'tracks'])
+            .describe('The gtype of entity to return. Valid values: artists or tracks'),
+        time_range: z
+            .enum(["long_term", "medium_term", "short_term"])
+            .optional()
+            .describe("Over what time frame the affinities are computed. Long term ~1 year of data, medium term is last 6 months, short term is last 4 weeks"),
+        limit: z
+            .number()
+            .min(0)
+            .max(50)
+            .optional()
+            .describe("The maximum number of items to return. Default: 20, minimum: 1, maximum: 50")
+    },
+    handler: async (args, extra) => {
+        const { type, time_range = "medium_term", limit = 20 } = args;
+        try {
+            const results = await handleSpotifyRequest(async (spotifyApi) => {
+                return await spotifyApi.currentUser.topItems(type, time_range, limit);
+            });
+            let formattedResults = "";
+            if (type === 'artists' && results.items.length > 0) {
+                formattedResults = results.items.map((artist, i) => {
+                    return `${i + 1}. ${artist.name} with id ${artist.id} and popularity ${artist.popularity}`;
+                }).join('\n');
+            }
+            else if (type === 'tracks' && results.items.length > 0) {
+                formattedResults = results.items.map((track, i) => {
+                    const albumName = track.album?.name ?? 'Unknown Album';
+                    const albumId = track.album?.id ?? 'Unknown ID';
+                    const artists = track.artists?.map((a) => a.name).join(', ') ?? 'Unknown Artist';
+                    return `${i + 1}. "${track.name}" from album "${albumName}" with id ${albumId} by ${artists} (duration: ${track.duration_ms} ms)`;
+                }).join('\n');
+            }
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: formattedResults || `No ${type} results found for get top items.`,
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            console.error("Error in getTopItems handler:", error);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Error searching for top items: ${error instanceof Error ? error.message : String(error)}`
+                    }
+                ]
+            };
+        }
+    }
+};
 export const tools = [
     searchSpotify,
+    getTopItems
 ];
