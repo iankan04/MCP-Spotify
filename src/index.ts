@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { tools } from './tools.js';
-
+import { read } from './read.js';
+import { write } from './write.js';
 
 // Create server instance
 const server = new McpServer({
@@ -9,7 +9,7 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
-[...tools].forEach((tool) => {
+[...read, ...write].forEach((tool) => {
     server.tool(tool.name, tool.description, tool.schema, tool.handler);
 })
 

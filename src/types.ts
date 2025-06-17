@@ -33,3 +33,36 @@ export type tool<
         }>;
       };
 };
+
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+}
+
+export interface SpotifyAlbum {
+  id: string;
+  name: string;
+  artists: SpotifyArtist[];
+}
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  type: string;
+  duration_ms: number;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+}
+
+export interface SpotifyEpisode {
+  id: string;
+  name: string;
+  description: string;
+  duration_ms: number;
+  release_date: string;
+  show: {
+    id: string;
+    name: string;
+    publisher: string;
+  }
+}

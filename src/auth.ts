@@ -68,14 +68,19 @@ app.get('/login', function(req, res) {
     const scope = [
         'user-read-private',
         'user-read-email',
-        'user-top-read'
+        'user-top-read',
+        'playlist-read-private',
+        'user-read-currently-playing',
+        'user-read-recently-played',
+        'user-read-playback-state',
+        'user-modify-playback-state',
     ]
 
     res.redirect('https://accounts.spotify.com/authorize?' +
         qs.stringify({
         response_type: 'code',
         client_id: client_id,
-        scope: scope,
+        scope: scope.join(' '),
         redirect_uri: redirect_uri,
         state: state
         }));
@@ -149,7 +154,7 @@ export async function refreshSpotifyToken(
 
 export async function handleSpotifyRequest<T>(
     action: (spotifyApi : SpotifyApi) => Promise<T>,
-): Promise<T> {
+): Promise<T | null> {
     let user = await getUser(client_id);
     if (user === null) {
         throw new Error("User does not exist in database");
@@ -181,7 +186,7 @@ export async function handleSpotifyRequest<T>(
         });
         const result = await action(spotifyApi);
         if (!result) {
-            throw new Error("No results returned from Spotify API");
+            return null;
         }
         return result;
     } catch (error) {

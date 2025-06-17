@@ -1,5 +1,17 @@
 import { z } from "zod";
 import { handleSpotifyRequest } from "./auth.js";
+function isTrack(item) {
+    return (item &&
+        item.type === 'track' &&
+        Array.isArray(item.artists) &&
+        item.album &&
+        typeof item.album.name === 'string');
+}
+function isEpisode(item) {
+    return (item &&
+        item.type === 'episode' &&
+        item.show);
+}
 const searchSpotify = {
     name: "searchSpotify",
     description: "Get Spotify catalog information about albums, artists, playlists, tracks, shows, episodes or audiobooks that match a keyword string",
@@ -22,6 +34,9 @@ const searchSpotify = {
                 return await spotifyApi.search(query, [type], undefined, limit);
             });
             let formattedResults = "";
+            if (results === null) {
+                throw new Error("No results returned");
+            }
             if (type === 'album' && results.albums) {
                 formattedResults = results.albums.items.map((album, i) => {
                     const artists = album.artists.map(a => a.name).join(', ');
@@ -106,6 +121,9 @@ const getTopItems = {
                 return await spotifyApi.currentUser.topItems(type, time_range, limit);
             });
             let formattedResults = "";
+            if (!results) {
+                throw new Error("No results returned");
+            }
             if (type === 'artists' && results.items.length > 0) {
                 formattedResults = results.items.map((artist, i) => {
                     return `${i + 1}. ${artist.name} with id ${artist.id} and popularity ${artist.popularity}`;
@@ -158,6 +176,9 @@ const getMyPlaylists = {
             const results = await handleSpotifyRequest(async (spotifyApi) => {
                 return await spotifyApi.currentUser.playlists.playlists(limit);
             });
+            if (!results) {
+                throw new Error("No results returned");
+            }
             let formattedResults = "";
             if (results.items.length > 0) {
                 formattedResults = results.items.map((playlist, i) => {
@@ -208,11 +229,14 @@ const getPlaylistItems = {
             const results = await handleSpotifyRequest(async (spotifyApi) => {
                 return await spotifyApi.playlists.getPlaylistItems(playlist_id, undefined, fields, limit);
             });
+            if (!results) {
+                throw new Error("No results returned");
+            }
             let formattedResults = "";
             if (results.items.length > 0) {
                 formattedResults = results.items.map((track, i) => {
                     const artists = track.track.artists.map(a => a.name).join(', ');
-                    return `${i + 1}. ${track.track.name} by ${artists} with id ${track.track.id} added at ${track.added_at} with duration ${track.track.duration_ms} ms`;
+                    return `${i + 1}. ${track.track.name} by ${artists} with id ${track.track.id} added at ${track.added_at} with duration ${track.track.duration_ms} ms and popularity ${track.track.popularity}`;
                 }).join('\n');
             }
             return {
@@ -237,9 +261,210 @@ const getPlaylistItems = {
         }
     }
 };
-export const tools = [
+const getUserProfile = {
+    name: "getUserProfile",
+    description: "Get public profile information about a Spotify user",
+    schema: {
+        user_id: z.string().describe("The user's Spotify user ID"),
+    },
+    handler: async (args, extra) => {
+        const { user_id } = args;
+        try {
+            const results = await handleSpotifyRequest(async (spotifyApi) => {
+                return await spotifyApi.users.profile(user_id);
+            });
+            if (!results) {
+                throw new Error("No results returned");
+            }
+            let formattedResults = `User: ${results.display_name} with ID ${results.id} and followers ${results.followers.total}`;
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: formattedResults || `No results found for get my playlists.`,
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            console.error("Error in getUserProfile handler:", error);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Error searching for user profile: ${error instanceof Error ? error.message : String(error)}`
+                    }
+                ]
+            };
+        }
+    }
+};
+const getCurrentlyPlaying = {
+    name: "getCurrentlyPlaying",
+    description: "Get the object currently being played on the user's Spotify account",
+    schema: {},
+    handler: async (args, extra) => {
+        try {
+            const results = await handleSpotifyRequest(async (spotifyApi) => {
+                return await spotifyApi.player.getCurrentlyPlayingTrack();
+            });
+            if (!results) {
+                throw new Error("No results returned");
+            }
+            if (!results.is_playing) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Nothing is currently playing on Spotify',
+                        }
+                    ]
+                };
+            }
+            let formattedResults = "";
+            if (isTrack(results?.item)) {
+                const artists = results.item.artists.map(a => a.name).join(', ');
+                const album = results.item.album.name;
+                const duration_ms = results.item.duration_ms;
+                const progress_ms = results.progress_ms;
+                formattedResults = `Currently playing track ${results.item.name} by ${artists} from album ${album} with duration ${duration_ms} ms and progress ${progress_ms} ms into the song`;
+            }
+            else if (isEpisode(results?.item)) {
+                const description = results.item.description;
+                const duration_ms = results.item.duration_ms;
+                const publisher = results.item.show.publisher;
+                const episodeName = results.item.name;
+                const showName = results.item.show.name;
+                formattedResults = `Currently playing episode ${episodeName} of show ${showName} by ${publisher} with description ${description} and duration ${duration_ms} ms`;
+            }
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: formattedResults || `No results found for get my playlists.`,
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // console.error("Error in getCurrentlyPlaying handler:", error);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Error searching for currently playing song: ${error instanceof Error ? error.message : String(error)}`
+                    }
+                ]
+            };
+        }
+    }
+};
+const getRecentlyPlayedTracks = {
+    name: "getRecentlyPlayedTracks",
+    description: "Get tracks from the current user's recently played tracks",
+    schema: {
+        limit: z
+            .number()
+            .min(0)
+            .max(50)
+            .optional()
+            .describe("The maximum number of items to return. Default: 20. Min: 1. Max: 50")
+    },
+    handler: async (args, extra) => {
+        try {
+            const { limit = 20 } = args;
+            const results = await handleSpotifyRequest(async (spotifyApi) => {
+                return await spotifyApi.player.getRecentlyPlayedTracks(limit);
+            });
+            let formattedResults = "";
+            if (results) {
+                const total = results.total;
+                const tracks = results.items.map((track, i) => {
+                    return `${i + 1}. ${track.track.name} by ${track.track.artists} with duration ${track.track.duration_ms} ms and played at ${track.played_at}`;
+                }).join('\n');
+                formattedResults = `Total items: ${total}\n ${tracks}`;
+            }
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: formattedResults || `No results found for get recently played tracks.`,
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            console.error("Error in getRecentlyPlayedTracks handler:", error);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Error searching for get recently played tracks: ${error instanceof Error ? error.message : String(error)}`
+                    }
+                ]
+            };
+        }
+    }
+};
+const getUserQueue = {
+    name: "getUserQueue",
+    description: "Get the list of objects that make up the user's queue",
+    schema: {},
+    handler: async (args, extra) => {
+        try {
+            const results = await handleSpotifyRequest(async (spotifyApi) => {
+                return await spotifyApi.player.getUsersQueue();
+            });
+            if (!results) {
+                throw new Error("No results returned");
+            }
+            let formattedResults = "";
+            if (results.queue.length > 0) {
+                formattedResults = results.queue.map((track, i) => {
+                    if (isTrack(track)) {
+                        const artists = track.artists.map(a => a.name).join(', ');
+                        const album = track.album.name;
+                        const duration_ms = track.duration_ms;
+                        return `${i + 1}. ${track.name} by ${artists} from album ${album} with duration ${duration_ms} ms`;
+                    }
+                    else if (isEpisode(track)) {
+                        const description = track.description;
+                        const duration_ms = track.duration_ms;
+                        const publisher = track.show.publisher;
+                        const episodeName = track.name;
+                        const showName = track.show.name;
+                        formattedResults = `Currently playing episode ${episodeName} of show ${showName} by ${publisher} with description ${description} and duration ${duration_ms} ms`;
+                    }
+                }).join('\n');
+            }
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: formattedResults || `No songs in queue at the moment`,
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            console.error("Error in getUserQueue handler:", error);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Error searching for user queue: ${error instanceof Error ? error.message : String(error)}`
+                    }
+                ]
+            };
+        }
+    }
+};
+export const read = [
     searchSpotify,
     getTopItems,
     getMyPlaylists,
     getPlaylistItems,
+    getUserProfile,
+    getCurrentlyPlaying,
+    getRecentlyPlayedTracks
 ];
