@@ -74,6 +74,8 @@ app.get('/login', function(req, res) {
         'user-read-recently-played',
         'user-read-playback-state',
         'user-modify-playback-state',
+        'playlist-modify-public',
+        'playlist-modify-private'
     ]
 
     res.redirect('https://accounts.spotify.com/authorize?' +

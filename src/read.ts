@@ -40,7 +40,7 @@ const searchSpotify: tool<{
             .optional()
             .describe("The maximum number of results to return in each item type")
     },
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { query, type, limit=20 } = args;
 
         try {
@@ -62,32 +62,32 @@ const searchSpotify: tool<{
             if (type === 'album' && results.albums) {
                 formattedResults = results.albums.items.map((album, i) => {
                     const artists = album.artists.map(a => a.name).join(', ');
-                    return `${i + 1}. "${album.name}" by ${artists} (${album.release_date})`;
+                    return `${i + 1}. "${album.name}" (id: ${album.id}) by ${artists} (${album.release_date})`;
                 }).join('\n');
             } else if (type === 'artist' && results.artists) {
                 formattedResults = results.artists.items.map((artist, i) => {
-                    return `${i + 1}. "${artist.name} with ${artist.followers} followers and popularity score ${artist.popularity}`;
+                    return `${i + 1}. "${artist.name} (id: ${artist.id}) with ${artist.followers} followers and popularity score ${artist.popularity}`;
                 }).join('\n');
             } else if (type === 'playlist' && results.playlists !== null) {
                 formattedResults = results.playlists.items.map((playlist, i) => {
-                    return `${i + 1}. "${playlist?.name ?? 'Unknown Playlist'} owned by ${playlist?.owner.display_name ?? 'Unknown Owner'} with ${playlist?.followers ?? 'Unknown followers'} followers`;
+                    return `${i + 1}. "${playlist?.name ?? 'Unknown Playlist'} (id: ${playlist.id}) owned by ${playlist?.owner.display_name ?? 'Unknown Owner'} with ${playlist?.followers ?? 'Unknown followers'} followers`;
                 }).join('\n');
             } else if (type === 'track' && results.tracks) {
                 formattedResults = results.tracks.items.map((track, i) => {
                     const artists = track.artists.map(a => a.name).join(', ');
-                    return `${i + 1}. "${track.name} by ${artists} that is ${track.duration_ms} ms long`;
+                    return `${i + 1}. "${track.name} (id: ${track.id}) by ${artists} that is ${track.duration_ms} ms long`;
                 }).join('\n');
             } else if (type === 'show' && results.shows) {
                 formattedResults = results.shows.items.map((show, i) => {
-                    return `${i + 1}. "${show.name} by ${show.publisher}. ${show.description} The show has ${show.total_episodes} number of total episodes`;
+                    return `${i + 1}. "${show.name} (id: ${show.id})by ${show.publisher}. ${show.description} The show has ${show.total_episodes} number of total episodes`;
                 }).join('\n');
             } else if (type === 'episode' && results.episodes) {
                 formattedResults = results.episodes.items.map((episode, i) => {
-                    return `${i + 1}. "${episode.name} is about ${episode.description} The episode is ${episode.duration_ms} ms long. `;
+                    return `${i + 1}. "${episode.name} (id: ${episode.id}) is about ${episode.description} The episode is ${episode.duration_ms} ms long. `;
                 }).join('\n');
             } else if (type === 'audiobook' && results.audiobooks) {
                 formattedResults = results.audiobooks.items.map((audiobook, i) => {
-                    return `${i + 1}. "${audiobook.name} (${audiobook.edition} edition) by ${audiobook.publisher} and narrated by ${audiobook.narrators}. ${audiobook.description} The audiobook has ${audiobook.total_chapters} chapters. `;
+                    return `${i + 1}. "${audiobook.name} (${audiobook.edition} edition) (id: ${audiobook.id}) by ${audiobook.publisher} and narrated by ${audiobook.narrators}. ${audiobook.description} The audiobook has ${audiobook.total_chapters} chapters. `;
                 }).join('\n');
             }
             return {
@@ -136,7 +136,7 @@ const getTopItems: tool<{
             .optional()
             .describe("The maximum number of items to return. Default: 20, minimum: 1, maximum: 50")  
     },  
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { type, time_range="medium_term", limit=20 } = args
 
         try {
@@ -204,7 +204,7 @@ const getMyPlaylists: tool<{
             .optional()
             .describe("The maximum number of items to return. Default: 20. Min: 1. Max: 50.")
     },
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { limit=20 } = args;
 
         try {
@@ -271,7 +271,7 @@ const getPlaylistItems: tool<{
             .optional()
             .describe("The maximum number of items to return. Default: 20. Min: 1. Max: 50.")
     },
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { playlist_id, fields, limit=20 } = args;
 
         try {
@@ -321,29 +321,24 @@ const getPlaylistItems: tool<{
     }
 }
 
-const getUserProfile: tool<{
-    user_id: z.ZodString,
+const getCurrentUserProfile: tool<{
 }> = {
-    name: "getUserProfile",
-    description: "Get public profile information about a Spotify user",
+    name: "getCurrentUserProfile",
+    description: "Get detailed profile information about the current user",
     schema: {
-        user_id: z.string().describe("The user's Spotify user ID"),
     },
-    handler: async (args, extra: SpotifyHandlerExtra) => {
-        const { user_id } = args;
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
 
         try {
             const results = await handleSpotifyRequest(async (spotifyApi) => {
-                return await spotifyApi.users.profile(
-                    user_id
-                )
+                return await spotifyApi.currentUser.profile();
             });
 
             if (!results) {
                 throw new Error("No results returned");
             }
 
-            let formattedResults = `User: ${results.display_name} with ID ${results.id} and followers ${results.followers.total}`
+            let formattedResults = `User: ${results.display_name} with Spotify User ID ${results.id}, email ${results.email} and followers ${results.followers.total}`
 
             return {
                 content: [
@@ -373,7 +368,7 @@ const getCurrentlyPlaying: tool<{}> = {
     name: "getCurrentlyPlaying",
     description: "Get the object currently being played on the user's Spotify account",
     schema: {},
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         try {
             const results = await handleSpotifyRequest(async (spotifyApi) => {
                 return await spotifyApi.player.getCurrentlyPlayingTrack();
@@ -450,7 +445,7 @@ const getRecentlyPlayedTracks: tool<{
             .optional()
             .describe("The maximum number of items to return. Default: 20. Min: 1. Max: 50")
     },
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         try {
             const { limit=20 } = args
 
@@ -502,7 +497,7 @@ const getUserQueue: tool<{}> = {
     name: "getUserQueue",
     description: "Get the list of objects that make up the user's queue",
     schema: {},
-    handler: async (args, extra: SpotifyHandlerExtra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         try {
             const results = await handleSpotifyRequest(async (spotifyApi) => {
                 return await spotifyApi.player.getUsersQueue();
@@ -563,7 +558,7 @@ export const read = [
     getTopItems,
     getMyPlaylists,
     getPlaylistItems,
-    getUserProfile,
+    getCurrentUserProfile,
     getCurrentlyPlaying,
     getRecentlyPlayedTracks,
     getUserQueue

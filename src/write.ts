@@ -1,6 +1,16 @@
 import { z } from "zod";
+import type { SpotifyHandlerExtra, tool, SpotifyTrack, SpotifyEpisode } from "./types.js";
 import { handleSpotifyRequest } from "./auth.js";
-const startPlayback = {
+import { ZodEnum } from "zod/v4";
+import { SpotifyApi } from "@spotify/web-api-ts-sdk";
+
+
+const startPlayback: tool<{
+    device_id: z.ZodOptional<z.ZodString>,
+    context_uri: z.ZodOptional<z.ZodString>,
+    type: z.ZodOptional<z.ZodEnum<['track', 'album', 'artist', 'playlist']>>,
+    id: z.ZodOptional<z.ZodString>
+}> = {
     name: "startPlayback",
     description: "Start a new playback on the active device. Requires at least context_uri or type and id to be given",
     schema: {
@@ -21,8 +31,9 @@ const startPlayback = {
             .optional()
             .describe("The id to play")
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { device_id, context_uri, type, id } = args;
+
         if (!(context_uri || (type && id))) {
             return {
                 content: [
@@ -31,27 +42,35 @@ const startPlayback = {
                         text: 'Missing context'
                     }
                 ]
-            };
+            }
         }
+
         let spotifyUri = context_uri;
         if (!spotifyUri && type && id) {
             spotifyUri = `spotify:${type}:${id}`;
         }
+
         try {
             await handleSpotifyRequest(async (spotifyApi) => {
                 const device = device_id || '';
+
                 if (!spotifyUri) {
                     await spotifyApi.player.startResumePlayback(device);
                     return;
-                }
+                } 
+                
                 if (type === 'track') {
-                    await spotifyApi.player.startResumePlayback(device, undefined, [spotifyUri]);
+                    await spotifyApi.player.startResumePlayback(
+                        device,
+                        undefined,
+                        [spotifyUri]
+                    );
                     return;
-                }
-                else {
+                } else {
                     await spotifyApi.player.startResumePlayback(device, spotifyUri);
                 }
             });
+
             return {
                 content: [
                     {
@@ -59,9 +78,8 @@ const startPlayback = {
                         text: `Playback started`,
                     }
                 ]
-            };
-        }
-        catch (error) {
+            }
+        } catch (error) {
             return {
                 content: [
                     {
@@ -69,11 +87,14 @@ const startPlayback = {
                         text: `Error starting/resuming playback with error: ${error}`
                     }
                 ]
-            };
+            }
         }
     }
-};
-const resumePlayback = {
+}
+
+const resumePlayback: tool<{
+    device_id: z.ZodOptional<z.ZodString>,
+}> = {
     name: "resumePlayback",
     description: "Resume playback on the active device, only for Spotify premium members",
     schema: {
@@ -82,18 +103,19 @@ const resumePlayback = {
             .optional()
             .describe("The id of the device this command is targetting. If not supplied, the user's current actual device is the target")
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { device_id: id } = args;
+
         await handleSpotifyRequest(async (spotifyApi) => {
             try {
                 await spotifyApi.player.startResumePlayback(id || '');
                 return { message: "Playback resumed" };
-            }
-            catch (err) {
+            } catch (err) {
                 console.error("Non-JSON response or error", err);
                 return { message: "Playback command sent" };
             }
         });
+
         return {
             content: [
                 {
@@ -101,10 +123,13 @@ const resumePlayback = {
                     text: `Playback resumed`,
                 }
             ]
-        };
+        }
     }
-};
-const pausePlayback = {
+}
+
+const pausePlayback: tool<{
+    device_id: z.ZodOptional<z.ZodString>,
+}> = {
     name: "pausePlayback",
     description: "Pause playback on the active device, only for Spotify premium members",
     schema: {
@@ -113,18 +138,19 @@ const pausePlayback = {
             .optional()
             .describe("The id of the device this command is targetting. If not supplied, the user's current actual device is the target")
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { device_id: id } = args;
+
         await handleSpotifyRequest(async (spotifyApi) => {
             try {
                 await spotifyApi.player.pausePlayback(id || '');
                 return { message: "Playback paused" };
-            }
-            catch (err) {
+            } catch (err) {
                 console.error("Non-JSON response or error", err);
                 return { message: "Playback command sent" };
             }
         });
+
         return {
             content: [
                 {
@@ -132,10 +158,14 @@ const pausePlayback = {
                     text: `Playback paused`,
                 }
             ]
-        };
+        }
     }
-};
-const addQueue = {
+}
+
+const addQueue: tool<{
+    uri: z.ZodString,
+    device_id: z.ZodOptional<z.ZodString>,
+}> = {
     name: "addQueue",
     description: "Add an item to be played next in the playback queue",
     schema: {
@@ -147,18 +177,19 @@ const addQueue = {
             .optional()
             .describe("The id of the device this command is targetting. If not supplied, the user's current actual device is the target")
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { uri, device_id: id } = args;
+
         await handleSpotifyRequest(async (spotifyApi) => {
             try {
                 await spotifyApi.player.addItemToPlaybackQueue(uri, id);
                 return { message: "Added to queue" };
-            }
-            catch (err) {
+            } catch (err) {
                 console.error("Non-JSON response or error", err);
                 return { message: "Command recieved" };
             }
         });
+
         return {
             content: [
                 {
@@ -166,10 +197,14 @@ const addQueue = {
                     text: `Added to queue`,
                 }
             ]
-        };
+        }
     }
-};
-const togglePlaybackShuffle = {
+}
+
+const togglePlaybackShuffle: tool<{
+    state: z.ZodBoolean,
+    device_id: z.ZodOptional<z.ZodString>,
+}> = {
     name: "togglePlaybackShuffle",
     description: "Toggle shuffle on or off for user's playback",
     schema: {
@@ -181,18 +216,19 @@ const togglePlaybackShuffle = {
             .optional()
             .describe("The id of the device this command is targetting. If not supplied, the user's current actual device is the target")
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { state, device_id: id } = args;
+
         await handleSpotifyRequest(async (spotifyApi) => {
             try {
                 await spotifyApi.player.togglePlaybackShuffle(state, id);
                 return { message: "Shuffle changed" };
-            }
-            catch (err) {
+            } catch (err) {
                 console.error("Non-JSON response or error", err);
                 return { message: "Command sent" };
             }
         });
+
         return {
             content: [
                 {
@@ -200,10 +236,17 @@ const togglePlaybackShuffle = {
                     text: `Shuffle changed`,
                 }
             ]
-        };
+        }
     }
-};
-const createPlaylist = {
+}
+
+
+const createPlaylist: tool<{
+    user_id: z.ZodString,
+    name: z.ZodString,
+    public: z.ZodOptional<z.ZodBoolean>
+    description: z.ZodOptional<z.ZodString>
+}> = {
     name: "createPlaylist",
     description: "Create a playlist for a spotify user",
     schema: {
@@ -222,8 +265,9 @@ const createPlaylist = {
             .optional()
             .describe("The playlist description")
     },
-    handler: async (args, _extra) => {
-        const { user_id: id, name, public: pub = true, description } = args;
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
+        const { user_id: id, name, public: pub=true, description } = args;
+
         if (!(name && id)) {
             return {
                 content: [
@@ -232,17 +276,19 @@ const createPlaylist = {
                         text: 'Missing name or user_id'
                     }
                 ]
-            };
+            }
         }
+
         try {
             await handleSpotifyRequest(async (spotifyApi) => {
                 await spotifyApi.playlists.createPlaylist(id, {
-                    "name": name,
-                    "public": pub,
-                    "description": description
+                    "name" : name,
+                    "public" : pub,
+                    "description" : description
                 });
                 return;
             });
+
             return {
                 content: [
                     {
@@ -250,9 +296,8 @@ const createPlaylist = {
                         text: `Playlist created`,
                     }
                 ]
-            };
-        }
-        catch (error) {
+            }
+        } catch (error) {
             return {
                 content: [
                     {
@@ -260,11 +305,17 @@ const createPlaylist = {
                         text: `Error starting/resuming playback with error: ${error}`
                     }
                 ]
-            };
+            }
         }
     }
-};
-const addItemsToPlaylist = {
+}
+
+const addItemsToPlaylist: tool<{
+    playlist_id: z.ZodString,
+    uris: z.ZodOptional<z.ZodArray<z.ZodString>>,
+    types: z.ZodOptional<z.ZodArray<z.ZodString>>,
+    ids: z.ZodOptional<z.ZodArray<z.ZodString>>
+}> = {
     name: "addItemsToPlaylist",
     description: "Adds one or more items to a user's playlist",
     schema: {
@@ -284,8 +335,9 @@ const addItemsToPlaylist = {
             .optional()
             .describe("A comma-separated list of ids in the same order as types"),
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { playlist_id, uris, types, ids } = args;
+
         if (!(uris || types && ids)) {
             return {
                 content: [
@@ -294,8 +346,9 @@ const addItemsToPlaylist = {
                         text: 'Missing uris or types and ids'
                     }
                 ]
-            };
-        }
+            }
+        } 
+        
         if (uris?.length === 0) {
             return {
                 content: [
@@ -304,8 +357,9 @@ const addItemsToPlaylist = {
                         text: 'Empty uris list'
                     }
                 ]
-            };
-        }
+            }
+        } 
+        
         if ((types && !ids) || (!types && ids) || types?.length !== ids?.length) {
             return {
                 content: [
@@ -314,8 +368,9 @@ const addItemsToPlaylist = {
                         text: 'types and ids must be the same length and both present'
                     }
                 ]
-            };
+            }
         }
+
         if ((types?.length === 0 || ids?.length === 0) && !uris) {
             return {
                 content: [
@@ -326,17 +381,21 @@ const addItemsToPlaylist = {
                 ]
             };
         }
-        const finalized_uris = uris
+
+        const finalized_uris: string[] = uris
             ? uris
             : (types && ids
                 ? types.map((type, idx) => `spotify:${type}:${ids[idx]}`)
                 : []);
+
         console.error(finalized_uris);
+
         try {
             await handleSpotifyRequest(async (spotifyApi) => {
                 await spotifyApi.playlists.addItemsToPlaylist(playlist_id, finalized_uris);
                 return;
             });
+
             return {
                 content: [
                     {
@@ -344,9 +403,8 @@ const addItemsToPlaylist = {
                         text: `Items added to playlist`,
                     }
                 ]
-            };
-        }
-        catch (error) {
+            }
+        } catch (error) {
             return {
                 content: [
                     {
@@ -354,11 +412,17 @@ const addItemsToPlaylist = {
                         text: `Error adding to playlist ${error}`
                     }
                 ]
-            };
+            }
         }
     }
-};
-const changePlaylistDetails = {
+}
+
+const changePlaylistDetails: tool<{
+    playlist_id: z.ZodString,
+    name: z.ZodOptional<z.ZodString>,
+    public: z.ZodOptional<z.ZodBoolean>,
+    description: z.ZodOptional<z.ZodString>
+}> = {
     name: "changePlaylistDetails",
     description: "Change a playlist's name and public/private state",
     schema: {
@@ -378,22 +442,23 @@ const changePlaylistDetails = {
             .optional()
             .describe("Value for playlist description")
     },
-    handler: async (args, _extra) => {
+    handler: async (args, _extra: SpotifyHandlerExtra) => {
         const { playlist_id, name, public: pub, description } = args;
+
         await handleSpotifyRequest(async (spotifyApi) => {
             try {
-                await spotifyApi.playlists.changePlaylistDetails(playlist_id, {
-                    "name": name,
-                    "public": pub,
+                await spotifyApi.playlists.changePlaylistDetails(playlist_id,{ 
+                    "name": name, 
+                    "public": pub, 
                     "description": description
                 });
                 return { message: "Shuffle changed" };
-            }
-            catch (err) {
+            } catch (err) {
                 console.error("Non-JSON response or error", err);
                 return { message: "Command sent" };
             }
         });
+
         return {
             content: [
                 {
@@ -401,9 +466,10 @@ const changePlaylistDetails = {
                     text: `Shuffle changed`,
                 }
             ]
-        };
+        }
     }
-};
+}
+
 export const write = [
     startPlayback,
     resumePlayback,
@@ -414,3 +480,4 @@ export const write = [
     addItemsToPlaylist,
     changePlaylistDetails,
 ];
+
