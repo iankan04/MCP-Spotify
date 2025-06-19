@@ -23,7 +23,9 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that en
 
 ## Example Interactions
 
-- _"What songs does bruno mars have?"_
+- _"Can you add the top 5 Coldplay songs to my playlist vibes"_
+- _"What are my most listened to songs this past month"_
+- _"Can you shuffle play my top songs"_
 
 ## Tools
 
@@ -38,7 +40,144 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that en
      - `limit` (number, optional): Maximum number of results to return (10-50)
    - **Returns**: List of matching items with their IDs, names, and additional details
    - **Example**: `searchSpotify("bohemian rhapsody", "track", 20)`
+
+2. **getTopItems**
+
+   - **Description**: Get the current user's top artists or tracks based on calculated affinity
+   - **Parameters**:
+     - `type` (string): The type of entity to return. Valid values: artists or tracks
+     - `time_range` (string, optional): Over what time frame the affinities are computed. Long_term ~1 year of data, medium_term is last 6 months, short_term is last 4 weeks
+     - `limit` (number, optional): The maximum number of items to return. Default: 20, minimum: 1, maximum: 50
+   - **Returns**: List of matching items with name, ids, and additional details
+   - **Example**: `getTopItems("artists", "short_term", 5)`
+
+3. **getMyPlaylists**
+
+   - **Description**: Get a list of the playlists owned or followed by the current Spotify user
+   - **Parameters**:
+     - `limit` (number, optional): The maximum number of items to return. Default: 20, minimum: 1, maximum: 50
+   - **Returns**: List of matching playlists with name, ids, and additional details
+   - **Example**: `getMyPlaylists(25)`
+
+4. **getPlaylistItems**
+
+   - **Description**: Get full details of the items of a playlist owned by a Spotify user
+   - **Parameters**:
+     - `playlist_id` (string): The Spotify ID of the playlist
+     - `fields` (string, optional): A comma-separated list of the fields to return
+     - `limit` (number, optional): The maximum number of items to return. Default: 20, minimum: 1, maximum: 50
+   - **Returns**: List of matching playlist items with name, ids, and additional details
+   - **Example**: `getPlaylistItems("123")`
+
+5. **getCurrentUserProfile**
+
+   - **Description**: Get detailed profile information about the current user
+   - **Parameters**: None
+   - **Returns**: Users' display name, id, email, and number of followers
+   - **Example**: `getCurrentUserProfile()`
+
+6. **getCurrentlyPlaying**
+
+   - **Description**: Get full details of the items of a playlist owned by a Spotify user
+   - **Parameters**: None
+   - **Returns**: Returns the currently playing item's name and accompanying details
+   - **Example**: `getCurrentlyPlaying()`
+
+7. **getRecentlyPlayedTracks**
+
+   - **Description**: Get full details of the items of a playlist owned by a Spotify user
+   - **Parameters**:
+     - `limit` (number, optional): The maximum number of items to return. Default: 20, minimum: 1, maximum: 50
+   - **Returns**: List recently played tracks' names and additional information
+   - **Example**: `getRecentlyPlayedTracks(20)`
+
+8. **getUserQueue**
+
+   - **Description**: Get the list of objects that make up the user's queue
+   - **Parameters**: None
+   - **Returns**: The items' names and additional information in the queue
+   - **Example**: `getUserQueue()`
+
+### Write Operations
+
+1. **startPlayback**
+
+   - **Description**: Start a new playback on the active device
+   - **Parameters**: 
+     - `device_id` (string, optional): The ID of the device this command is targeting
+     - `context_uri` (number, optional): Spotify URI of the context to play. Valid contexts are albums, artists, and playlists
+     - `type` (number, optional): The type to play. Valid types are track, album, artist, or playlist
+     - `id` (number, optional): The Spotify ID of the item to play
+   - **Returns**: Playback started
+   - **Example**: `startPlayback()`
+
+2. **resumePlayback**
+
+   - **Description**: Resume playback on the active device
+   - **Parameters**: 
+     - `device_id` (string, optional): The ID of the device this command is targeting
+   - **Returns**: Playback resumed
+   - **Example**: `resumePlayback()`
+
+3. **pausePlayback**
+
+   - **Description**: Pause playback on the active device
+   - **Parameters**: 
+     - `device_id` (string, optional): The ID of the device this command is targeting
+   - **Returns**: Playback paused
+   - **Example**: `pausePlayback()`
+
+4. **addQueue**
+
+   - **Description**: Add an item to be played next in the playback queue
+   - **Parameters**:
+     - `uri` (string): The URI of the item to add to the queue. Must be a track or an episode URI
+     - `device_id` (string, optional): The ID of the device this command is targeting
+   - **Returns**: Added to Queue
+   - **Example**: `addQueue("123uri")`
   
+5. **togglePlaybackShuffle**
+
+   - **Description**: Toggle shuffle on or off for the user's playback
+   - **Parameters**:
+     - `state` (boolean): True: Shuffle the user's playback. False: Do not shuffle the user's playback
+     - `device_id` (string, optional): The ID of the device this command is targeting
+   - **Returns**: Shuffle changed
+   - **Example**: `togglePlaybackShuffle(true)`
+
+6. **createPlaylist**
+
+   - **Description**: Create a playlist for a Spotify user
+   - **Parameters**:
+     - `device_id` (string): The user's Spotify user ID
+     - `name` (string): The name for your new playlist
+     - `public` (boolean, optional): The playlist's public/private status
+     - `description` (string, optional): The playlist's description
+   - **Returns**: New playlist created
+   - **Example**: `createPlaylist("user123", "new playlist", true, "This is a new playlist")`
+
+7. **addItemsToPlaylist**
+
+   - **Description**: Adds one or more items to a user's playlist
+   - **Parameters**:
+     - `playlist_id` (string): The Spotify ID of the playlist
+     - `uris` (string, optional): A comma-separated list of Spotify URIs to add, can be track or episode URIs
+     - `types` (boolean, optional): A comma-separated list of types in the same order as ids
+     - `ids` (string, optional): A comma-separated list of ids in the same order as types
+   - **Returns**: Items added to playlist
+   - **Example**: `createPlaylist("playlist123")`
+  
+7. **changePlaylistDetails**
+
+   - **Description**: Change a playlist's name and public/private state
+   - **Parameters**:
+     - `playlist_id` (string): The Spotify ID of the playlist
+     - `name` (string, optional): The new name for the playlist
+     - `public` (boolean, optional): The playlist's new public/private status
+     - `description` (string, optional): Value for playlist description
+   - **Returns**: Playlist details changed
+   - **Example**: `changePlaylistDetails("playlist123", "new new playlist")`
+
 ## Setup
 
 ### Prerequisites
@@ -104,13 +243,6 @@ npm run auth
 5. The authentication script will automatically exchange this code for access and refresh tokens.
 
 6. These tokens will be saved to the Redis database and automatically refreshed when called
-
-### Starting the application
-
-Run redis-server and the index.js server to start application
-```bash
-node build/index.js
-```
 
 ## Integrating with Claude Desktop
 
