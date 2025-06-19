@@ -124,7 +124,7 @@ const getTopItems: tool<{
     schema: {
         type: z
             .enum(['artists', 'tracks'])
-            .describe('The gtype of entity to return. Valid values: artists or tracks'),
+            .describe('The type of entity to return. Valid values: artists or tracks'),
         time_range: z
             .enum(["long_term", "medium_term", "short_term"])
             .optional()
@@ -263,7 +263,7 @@ const getPlaylistItems: tool<{
         fields: z
             .string()
             .optional()
-            .describe("Filters for the query: a comma-separated list of the fields to return. If omitted, all fields are returned. For example, to get just the total number of items and the request limit: fields=total,limit. A dot separator can be used to specify non-reoccurring fields, while parentheses can be used to specify reoccurring fields within objects. For example, to get just the added date and user ID of the adder: fields=items(added_at,added_by.id). Use multiple parentheses to drill down into nested objects, for example: fields=items(track(name,href,album(name,href))). Fields can be excluded by prefixing them with an exclamation mark, for example: fields=items.track.album(!external_urls,images)"),
+            .describe("A comma-separated list of the fields to return. If omitted, all fields are returned. For example, to get just the total number of items and the request limit: fields=total,limit. A dot separator can be used to specify non-reoccurring fields, while parentheses can be used to specify reoccurring fields within objects. For example, to get just the added date and user ID of the adder: fields=items(added_at,added_by.id). Use multiple parentheses to drill down into nested objects, for example: fields=items(track(name,href,album(name,href))). Fields can be excluded by prefixing them with an exclamation mark, for example: fields=items.track.album(!external_urls,images)"),
         limit: z
             .number()
             .min(0)

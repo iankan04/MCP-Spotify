@@ -293,7 +293,7 @@ const createPlaylist: tool<{
                 content: [
                     {
                         type: 'text',
-                        text: `Playlist created`,
+                        text: `New playlist ${name} created`,
                     }
                 ]
             }
@@ -446,24 +446,18 @@ const changePlaylistDetails: tool<{
         const { playlist_id, name, public: pub, description } = args;
 
         await handleSpotifyRequest(async (spotifyApi) => {
-            try {
-                await spotifyApi.playlists.changePlaylistDetails(playlist_id,{ 
-                    "name": name, 
-                    "public": pub, 
-                    "description": description
-                });
-                return { message: "Shuffle changed" };
-            } catch (err) {
-                console.error("Non-JSON response or error", err);
-                return { message: "Command sent" };
-            }
+            await spotifyApi.playlists.changePlaylistDetails(playlist_id,{ 
+                "name": name, 
+                "public": pub, 
+                "description": description
+            });
         });
 
         return {
             content: [
                 {
                     type: 'text',
-                    text: `Shuffle changed`,
+                    text: `Playlist details changed`,
                 }
             ]
         }
