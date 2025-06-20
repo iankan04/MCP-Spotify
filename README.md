@@ -11,14 +11,14 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that en
 - [Example Interactions](#example-interactions)
 - [Tools](#tools)
   - [Read Operations](#read-operations)
-  - [Play / Create Operations](#play--create-operations)
+  - [Write Operations](#write-operations)
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Creating a Spotify Developer Application](#creating-a-spotify-developer-application)
   - [Spotify API Configuration](#spotify-api-configuration)
   - [Authentication Process](#authentication-process)
-- [Integrating with Claude Desktop, Cursor, and VsCode (Cline)](#integrating-with-claude-desktop-and-cursor)
+- [Integrating with Claude Desktop](#integrating-with-claude-desktop)
 </details>
 
 ## Example Interactions
